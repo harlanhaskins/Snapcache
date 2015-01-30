@@ -1,6 +1,6 @@
 //
 //  Snapcache.swift
-//  
+//
 //
 //  Created by Harlan Haskins on 11/17/14.
 //
@@ -8,13 +8,9 @@
 
 import UIKit
 
-private let sharedInstance = Snapcache()
-private let requestQueue = dispatch_queue_create("com.snapcache.RequestsQueue", DISPATCH_QUEUE_SERIAL)
-private let cacheQueue = dispatch_queue_create("com.snapcache.CacheQueue", DISPATCH_QUEUE_SERIAL)
-
 let SnapcacheUserInfoFailingURLKey = "com.snapcache.FailingURLKey"
 
-protocol Cacheable {
+public protocol Cacheable {
     var url: NSURL { get }
     var key: String { get }
     var type: String { get }
@@ -22,16 +18,22 @@ protocol Cacheable {
     func snapcache(manager: Snapcache, didFailWithError error: NSError)
 }
 
-class Snapcache {
+public class Snapcache {
     
     class var sharedCache: Snapcache {
-        return sharedInstance
+        return Constants.sharedInstance
     }
     
-    var cache = [String: NSCache]()
-    var requests = [NSURL: [Cacheable]]()
+    private struct Constants {
+        static let sharedInstance = Snapcache()
+        static let requestQueue = dispatch_queue_create("com.snapcache.RequestsQueue", DISPATCH_QUEUE_SERIAL)
+        static let cacheQueue = dispatch_queue_create("com.snapcache.CacheQueue", DISPATCH_QUEUE_SERIAL)
+    }
     
-    func loadImageForObject(object: Cacheable) {
+    private var cache = [String: NSCache]()
+    private var requests = [NSURL: [Cacheable]]()
+    
+    public func loadImageForObject(object: Cacheable) {
         if let image = self.cachedImageForKey(object.key, type: object.type) {
             object.snapcache(self, didLoadImage:image)
         } else {
@@ -39,25 +41,25 @@ class Snapcache {
         }
     }
     
-    func cachedImageForKey(key: String, type: String) -> UIImage? {
+    private func cachedImageForKey(key: String, type: String) -> UIImage? {
         return self.cache[type]?.objectForKey(key) as? UIImage
     }
     
-    func cacheImage(image: UIImage, key: String, type: String) {
+    private func cacheImage(image: UIImage, key: String, type: String) {
         let collection = self.cache[type] ?? NSCache()
         collection.setObject(image, forKey: key)
         self.cache[type] = collection
     }
     
-    func setImage(image: UIImage, atURL url: NSURL, forKey key: String, withType type: String) {
-        dispatch_async(cacheQueue) {
+    private func setImage(image: UIImage, atURL url: NSURL, forKey key: String, withType type: String) {
+        dispatch_async(Constants.cacheQueue) {
             self.cacheImage(image, key: key, type: type)
             self.runCompletionsForURL(url, image: image, error: nil)
         }
     }
     
     private func addRequest(#object: Cacheable) {
-        dispatch_async(requestQueue) {
+        dispatch_async(Constants.requestQueue) {
             var existingRequests = self.requests[object.url]
             var newRequests: [Cacheable]
             if let requests = existingRequests {
@@ -106,3 +108,4 @@ class Snapcache {
     }
     
 }
+

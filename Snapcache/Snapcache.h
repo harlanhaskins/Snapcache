@@ -14,6 +14,8 @@ FOUNDATION_EXPORT double SnapcacheVersionNumber;
 //! Project version string for Snapcache.
 FOUNDATION_EXPORT const unsigned char SnapcacheVersionString[];
 
+static NSString *const SnapcacheUserInfoFailingURLKey = @"com.snapcache.FailingURLKey";
+
 // In this header, you should import all the public headers of your framework using statements like #import <Snapcache/PublicHeader.h>
 
 
