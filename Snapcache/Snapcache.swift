@@ -60,36 +60,31 @@ public class Snapcache {
     
     private func addRequest(#object: Cacheable) {
         dispatch_async(Constants.requestQueue) {
-            var existingRequests = self.requests[object.url]
-            var newRequests: [Cacheable]
-            if let requests = existingRequests {
-                newRequests = requests + [object]
-            } else {
-                newRequests = [object]
+            var requests = self.requests[object.url] ?? [Cacheable]()
+            requests.append(object)
+            if requests.count == 1 {
                 dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0)) {
                     self.loadAssetForURL(object.url, key: object.key, type: object.type)
-                    return
                 }
             }
-            self.requests[object.url] = newRequests
+            self.requests[object.url] = requests
         }
     }
     
     private func loadAssetForURL(url: NSURL, key: String, type: String) {
-        let request = NSMutableURLRequest(URL: url)
-        let task = NSURLSession.sharedSession().dataTaskWithRequest(request) {data, response, error in
-            if let error = error {
-                self.runCompletionsForURL(url, image: nil, error: error)
-            } else if let data = data {
-                if let image = UIImage(data: data) {
-                    self.setImage(image, atURL: url, forKey: key, withType: type)
-                    return
-                }
+        let request = NSURLRequest(URL: url)
+        NSURLSession.sharedSession().dataTaskWithRequest(request) { data, response, error in
+            if let image = UIImage(data: data) {
+                self.setImage(image, atURL: url, forKey: key, withType: type)
+            } else {
+                let realError = error ?? NSError(
+                    domain: "Failed to load resource",
+                    code: 0xbadb33f,
+                    userInfo: [SnapcacheUserInfoFailingURLKey: url]
+                )
+                self.runCompletionsForURL(url, image: nil, error: realError)
             }
-            let error = NSError(domain: "Failed to load resource", code: 0xbadb33f, userInfo: [SnapcacheUserInfoFailingURLKey: url])
-            self.runCompletionsForURL(url, image: nil, error: error)
-        }
-        task.resume()
+        }.resume()
     }
     
     private func runCompletionsForURL(url: NSURL, image: UIImage?, error: NSError?) {
