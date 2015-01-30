@@ -20,7 +20,7 @@ public protocol Cacheable {
 
 public class Snapcache {
     
-    class var sharedCache: Snapcache {
+    public class var sharedCache: Snapcache {
         return Constants.sharedInstance
     }
     
